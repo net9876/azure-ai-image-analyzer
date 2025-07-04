@@ -1,0 +1,19 @@
+# Azure Storage and AI Vision dependencies
+azure-storage-blob==12.19.0
+requests==2.31.0
+
+# Azure Key Vault and Identity
+azure-keyvault-secrets==4.7.0
+azure-identity==1.15.0
+
+# Optional: If you want to use the SDK version later
+# azure-ai-vision-imageanalysis==1.0.0b1
+
+# Data processing
+Pillow==10.1.0
+
+# Environment and configuration
+python-dotenv==1.0.0
+
+# Logging and monitoring (optional)
+azure-monitor-opentelemetry==1.2.0

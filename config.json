@@ -1,0 +1,38 @@
+{
+  "analysis_settings": {
+    "target_keywords": [
+      "person",
+      "car", 
+      "animal",
+      "building",
+      "dog",
+      "cat",
+      "vehicle",
+      "tree",
+      "outdoor",
+      "indoor"
+    ],
+    "confidence_threshold": 0.5,
+    "max_tags": 10,
+    "features": [
+      "caption",
+      "tags", 
+      "objects"
+    ]
+  },
+  "containers": {
+    "input_container": "input-images",
+    "results_container": "analysis-results"
+  },
+  "naming_convention": {
+    "storage_prefix": "aianalyzer",
+    "vision_prefix": "ai-vision", 
+    "keyvault_prefix": "ai-kv"
+  },
+  "deployment_settings": {
+    "default_location": "eastus",
+    "storage_sku": "Standard_LRS",
+    "vision_sku": "S1",
+    "auto_upload_samples": true
+  }
+}
