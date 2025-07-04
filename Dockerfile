@@ -7,6 +7,8 @@ WORKDIR /app
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
+ENV CREDENTIAL_METHOD=keyvault
+ENV KEY_VAULT_URL=""
 
 # Install system dependencies (if needed)
 RUN apt-get update && apt-get install -y \
@@ -19,8 +21,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Copy the updated application code
-COPY dog_analyzer_with_results.py .
+# Copy the application code and configuration
+COPY azure_ai_image_analyzer.py .
+COPY config.json .
 
 # Create a non-root user for security
 RUN adduser --disabled-password --gecos '' appuser && \
@@ -30,5 +33,5 @@ USER appuser
 # Expose port (if you add a web interface later)
 EXPOSE 8000
 
-# Set the default command to use the new file
-CMD ["python", "dog_analyzer_with_results.py"]
+# Set the default command to use the new generalized file
+CMD ["python", "azure_ai_image_analyzer.py"]

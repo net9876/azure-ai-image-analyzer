@@ -1,6 +1,6 @@
 """
 Azure Resource Deployment Script for AI Image Analyzer
-Automatically creates all required Azure resources with proper naming conventions
+Automatically creates all required Azure resources with proper RBAC permissions
 """
 
 import json
@@ -9,6 +9,7 @@ import subprocess
 import random
 import string
 import os
+import time
 from pathlib import Path
 from typing import Dict, Any
 
@@ -25,6 +26,9 @@ class AzureResourceDeployer:
         # Generate resource names
         self.resource_names = self._generate_resource_names()
         
+        # Get current user info for RBAC
+        self.current_user_id = None
+        
     def _generate_suffix(self) -> str:
         """Generate random suffix for unique resource names"""
         return ''.join(random.choices(string.ascii_lowercase + string.digits, k=6))
@@ -38,7 +42,7 @@ class AzureResourceDeployer:
             # Return default config if file doesn't exist
             return {
                 "analysis_settings": {
-                    "target_keywords": ["person", "car", "animal", "building"],
+                    "target_keywords": ["cat", "dog", "animal", "pet"],
                     "confidence_threshold": 0.5,
                     "max_tags": 10,
                     "features": ["caption", "tags", "objects"]
@@ -64,7 +68,7 @@ class AzureResourceDeployer:
             "key_vault": f"{naming['keyvault_prefix']}-{self.suffix}"
         }
     
-    def _run_az_command(self, command: str) -> Dict[str, Any]:
+    def _run_az_command(self, command: str, ignore_errors: bool = False) -> Dict[str, Any]:
         """Run Azure CLI command and return JSON result"""
         try:
             print(f"   Running: {command}")
@@ -77,22 +81,52 @@ class AzureResourceDeployer:
             )
             
             if result.stdout.strip():
-                return json.loads(result.stdout)
+                try:
+                    return json.loads(result.stdout)
+                except json.JSONDecodeError:
+                    return {"output": result.stdout.strip()}
             return {}
             
+        except subprocess.CalledProcessError as e:
+            if ignore_errors:
+                print(f"   ⚠️  Command failed (ignoring): {e}")
+                return {}
+            print(f"   ❌ Command failed: {e}")
+            print(f"   Error output: {e.stderr}")
+            raise
+    
+    def _run_az_command_text(self, command: str) -> str:
+        """Run Azure CLI command and return text result"""
+        try:
+            print(f"   Running: {command}")
+            result = subprocess.run(
+                command, 
+                shell=True, 
+                check=True, 
+                capture_output=True, 
+                text=True
+            )
+            return result.stdout.strip()
         except subprocess.CalledProcessError as e:
             print(f"   ❌ Command failed: {e}")
             print(f"   Error output: {e.stderr}")
             raise
-        except json.JSONDecodeError:
-            print(f"   ⚠️  Command succeeded but returned non-JSON output")
-            return {}
     
     def check_azure_login(self) -> bool:
-        """Check if user is logged in to Azure CLI"""
+        """Check if user is logged in to Azure CLI and get user info"""
         try:
-            self._run_az_command("az account show")
+            account_info = self._run_az_command("az account show")
             print("✅ Azure CLI authentication verified")
+            
+            # Get current user ID for RBAC assignments
+            user_info = self._run_az_command("az ad signed-in-user show")
+            self.current_user_id = user_info.get("id") or user_info.get("objectId")
+            
+            if self.current_user_id:
+                print(f"✅ Current user ID: {self.current_user_id}")
+            else:
+                print("⚠️  Could not get user ID - will try alternative method")
+            
             return True
         except:
             print("❌ Not logged in to Azure CLI")
@@ -128,8 +162,7 @@ class AzureResourceDeployer:
             --resource-group {self.resource_group} 
             --query connectionString -o tsv""".replace('\n', ' ')
         
-        result = subprocess.run(command, shell=True, capture_output=True, text=True)
-        connection_string = result.stdout.strip()
+        connection_string = self._run_az_command_text(command)
         
         # Create containers
         containers = [
@@ -169,8 +202,7 @@ class AzureResourceDeployer:
             --resource-group {self.resource_group} 
             --query properties.endpoint -o tsv""".replace('\n', ' ')
         
-        result = subprocess.run(command, shell=True, capture_output=True, text=True)
-        endpoint = result.stdout.strip()
+        endpoint = self._run_az_command_text(command)
         
         # Get key
         command = f"""az cognitiveservices account keys list 
@@ -178,26 +210,64 @@ class AzureResourceDeployer:
             --resource-group {self.resource_group} 
             --query key1 -o tsv""".replace('\n', ' ')
         
-        result = subprocess.run(command, shell=True, capture_output=True, text=True)
-        key = result.stdout.strip()
+        key = self._run_az_command_text(command)
         
         print(f"✅ AI Vision service '{vision_name}' created")
         return {"endpoint": endpoint, "key": key}
     
-    def create_key_vault(self, storage_connection: str, vision_info: Dict[str, str]) -> str:
-        """Create Key Vault and store secrets"""
+    def create_key_vault_with_permissions(self, storage_connection: str, vision_info: Dict[str, str]) -> str:
+        """Create Key Vault with proper permissions and store secrets"""
         kv_name = self.resource_names["key_vault"]
         print(f"🔐 Creating Key Vault: {kv_name}")
         
-        # Create Key Vault
+        # Create Key Vault with RBAC enabled
         command = f"""az keyvault create 
             --name {kv_name} 
             --resource-group {self.resource_group} 
-            --location {self.location}""".replace('\n', ' ')
+            --location {self.location}
+            --enable-rbac-authorization true""".replace('\n', ' ')
         
         self._run_az_command(command)
+        print(f"✅ Key Vault '{kv_name}' created with RBAC enabled")
         
-        # Store secrets
+        # Wait for propagation
+        print("⏳ Waiting for Key Vault to be ready...")
+        time.sleep(10)
+        
+        # Get Key Vault resource ID
+        kv_resource_id = f"/subscriptions/{self._get_subscription_id()}/resourceGroups/{self.resource_group}/providers/Microsoft.KeyVault/vaults/{kv_name}"
+        
+        # Assign Key Vault Administrator role to current user
+        print("🔑 Assigning Key Vault Administrator permissions...")
+        
+        if self.current_user_id:
+            # Method 1: Use user ID
+            command = f"""az role assignment create 
+                --assignee {self.current_user_id} 
+                --role "Key Vault Administrator" 
+                --scope "{kv_resource_id}" """.replace('\n', ' ')
+        else:
+            # Method 2: Use signed-in user
+            command = f"""az role assignment create 
+                --assignee-object-id $(az ad signed-in-user show --query id -o tsv) 
+                --role "Key Vault Administrator" 
+                --scope "{kv_resource_id}" """.replace('\n', ' ')
+        
+        try:
+            self._run_az_command(command)
+            print("✅ Key Vault Administrator permissions assigned")
+        except Exception as e:
+            print(f"⚠️  Warning: Could not assign permissions automatically: {e}")
+            print("   Trying alternative permission method...")
+            
+            # Alternative: Use access policy instead of RBAC
+            self._setup_keyvault_access_policy(kv_name)
+        
+        # Wait for permissions to propagate
+        print("⏳ Waiting for permissions to propagate...")
+        time.sleep(15)
+        
+        # Store secrets with retry logic
         secrets = {
             "storage-connection-string": storage_connection,
             "vision-endpoint": vision_info["endpoint"],
@@ -205,17 +275,58 @@ class AzureResourceDeployer:
         }
         
         for secret_name, secret_value in secrets.items():
-            print(f"   🔑 Storing secret: {secret_name}")
-            command = f"""az keyvault secret set 
-                --vault-name {kv_name} 
-                --name "{secret_name}" 
-                --value "{secret_value}" """.replace('\n', ' ')
-            
-            self._run_az_command(command)
+            self._store_secret_with_retry(kv_name, secret_name, secret_value)
         
         key_vault_url = f"https://{kv_name}.vault.azure.net/"
         print(f"✅ Key Vault '{kv_name}' created with secrets")
         return key_vault_url
+    
+    def _get_subscription_id(self) -> str:
+        """Get current subscription ID"""
+        command = "az account show --query id -o tsv"
+        return self._run_az_command_text(command)
+    
+    def _setup_keyvault_access_policy(self, kv_name: str):
+        """Setup Key Vault access policy as fallback"""
+        print("   🔑 Setting up Key Vault access policy as fallback...")
+        
+        # Get current user principal name
+        try:
+            upn_command = "az ad signed-in-user show --query userPrincipalName -o tsv"
+            upn = self._run_az_command_text(upn_command)
+            
+            command = f"""az keyvault set-policy 
+                --name {kv_name} 
+                --upn {upn} 
+                --secret-permissions get list set delete""".replace('\n', ' ')
+            
+            self._run_az_command(command)
+            print("   ✅ Access policy configured")
+        except Exception as e:
+            print(f"   ⚠️  Could not set access policy: {e}")
+    
+    def _store_secret_with_retry(self, kv_name: str, secret_name: str, secret_value: str, max_retries: int = 3):
+        """Store secret in Key Vault with retry logic"""
+        print(f"   🔑 Storing secret: {secret_name}")
+        
+        for attempt in range(max_retries):
+            try:
+                command = f"""az keyvault secret set 
+                    --vault-name {kv_name} 
+                    --name "{secret_name}" 
+                    --value "{secret_value}" """.replace('\n', ' ')
+                
+                self._run_az_command(command)
+                print(f"   ✅ Secret '{secret_name}' stored successfully")
+                return
+                
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    print(f"   ⚠️  Attempt {attempt + 1} failed, retrying in 10 seconds...")
+                    time.sleep(10)
+                else:
+                    print(f"   ❌ Failed to store secret '{secret_name}' after {max_retries} attempts: {e}")
+                    raise
     
     def create_local_credentials_file(self, storage_connection: str, vision_info: Dict[str, str]):
         """Create local credentials file for development"""
@@ -253,10 +364,20 @@ vision_key={vision_info["key"]}
         image_extensions = ('.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.gif')
         uploaded_count = 0
         
-        for file_path in Path(images_folder).glob('*'):
-            if file_path.is_file() and file_path.suffix.lower() in image_extensions:
+        # Get list of image files
+        image_files = [f for f in Path(images_folder).glob('*') 
+                      if f.is_file() and f.suffix.lower() in image_extensions]
+        
+        print(f"   Found {len(image_files)} image files to upload")
+        
+        # Upload in batches to avoid overwhelming the system
+        batch_size = 10
+        for i in range(0, len(image_files), batch_size):
+            batch = image_files[i:i + batch_size]
+            print(f"   📦 Uploading batch {i//batch_size + 1}/{(len(image_files) + batch_size - 1)//batch_size}")
+            
+            for file_path in batch:
                 blob_name = file_path.name
-                print(f"   📁 Uploading: {blob_name}")
                 
                 command = f"""az storage blob upload 
                     --container-name {input_container} 
@@ -268,6 +389,8 @@ vision_key={vision_info["key"]}
                 try:
                     self._run_az_command(command)
                     uploaded_count += 1
+                    if uploaded_count % 10 == 0:
+                        print(f"      ✅ Uploaded {uploaded_count} images...")
                 except Exception as e:
                     print(f"   ⚠️  Failed to upload {blob_name}: {e}")
         
@@ -283,7 +406,7 @@ vision_key={vision_info["key"]}
             "location": self.location,
             "key_vault_url": key_vault_url,
             "resource_names": self.resource_names,
-            "deployment_date": "2025-07-04T" + "13:29:23"  # Current timestamp
+            "deployment_date": time.strftime("%Y-%m-%dT%H:%M:%S")
         }
         
         # Save updated config
@@ -293,7 +416,7 @@ vision_key={vision_info["key"]}
         print(f"✅ Configuration updated: {self.config_file}")
     
     def deploy_all_resources(self) -> Dict[str, str]:
-        """Deploy all Azure resources"""
+        """Deploy all Azure resources with proper error handling"""
         print("🚀 Starting Azure Resource Deployment")
         print(f"📍 Resource Group: {self.resource_group}")
         print(f"📍 Location: {self.location}")
@@ -305,11 +428,18 @@ vision_key={vision_info["key"]}
             return {}
         
         try:
-            # Deploy resources
+            # Deploy resources step by step
             self.create_resource_group()
             storage_connection = self.create_storage_account()
             vision_info = self.create_ai_vision()
-            key_vault_url = self.create_key_vault(storage_connection, vision_info)
+            
+            # Try to create Key Vault with proper permissions
+            try:
+                key_vault_url = self.create_key_vault_with_permissions(storage_connection, vision_info)
+            except Exception as e:
+                print(f"⚠️  Key Vault creation failed: {e}")
+                print("📝 Falling back to local credentials only...")
+                key_vault_url = None
             
             # Create local credentials for development
             self.create_local_credentials_file(storage_connection, vision_info)
@@ -318,7 +448,8 @@ vision_key={vision_info["key"]}
             self.upload_sample_images(storage_connection)
             
             # Update configuration
-            self.update_config_with_resources(key_vault_url)
+            if key_vault_url:
+                self.update_config_with_resources(key_vault_url)
             
             # Summary
             print("\n" + "="*60)
@@ -327,26 +458,29 @@ vision_key={vision_info["key"]}
             print(f"📦 Resource Group: {self.resource_group}")
             print(f"💾 Storage Account: {self.resource_names['storage_account']}")
             print(f"👁️  AI Vision: {self.resource_names['ai_vision']}")
-            print(f"🔐 Key Vault: {self.resource_names['key_vault']}")
-            print(f"🔗 Key Vault URL: {key_vault_url}")
-            print()
-            print("🚀 Ready to run analyzer:")
-            print("   # Using Key Vault:")
-            print(f'   export KEY_VAULT_URL="{key_vault_url}"')
-            print('   export CREDENTIAL_METHOD="keyvault"')
-            print('   python azure_ai_image_analyzer.py')
-            print()
-            print("   # Using local credentials:")
+            
+            if key_vault_url:
+                print(f"🔐 Key Vault: {self.resource_names['key_vault']}")
+                print(f"🔗 Key Vault URL: {key_vault_url}")
+                print()
+            print("🐳 Ready to run with Docker:")
+            print("   docker build -t azure-ai-image-analyzer .")
+            print("   docker run --env-file .env azure-ai-image-analyzer")
+            print("🚀 Ready to run analyzer with local credentials:")
             print('   export CREDENTIAL_METHOD="local"')
             print('   python azure_ai_image_analyzer.py')
             
-            return {
-                "key_vault_url": key_vault_url,
+            result = {
                 "resource_group": self.resource_group,
                 "storage_account": self.resource_names['storage_account'],
                 "ai_vision": self.resource_names['ai_vision'],
                 "key_vault": self.resource_names['key_vault']
             }
+            
+            if key_vault_url:
+                result["key_vault_url"] = key_vault_url
+            
+            return result
             
         except Exception as e:
             print(f"\n❌ Deployment failed: {e}")
@@ -369,7 +503,14 @@ def main():
         config_file=args.config
     )
     
-    deployer.deploy_all_resources()
+    result = deployer.deploy_all_resources()
+    
+    if result:
+        print(f"\n✅ Deployment successful! Resources created:")
+        for key, value in result.items():
+            print(f"   {key}: {value}")
+    else:
+        print("\n❌ Deployment failed. Check the error messages above.")
 
 
 if __name__ == "__main__":
@@ -377,44 +518,41 @@ if __name__ == "__main__":
 
 
 """
-🚀 DEPLOYMENT SCRIPT FEATURES:
+🚀 ENHANCED DEPLOYMENT SCRIPT FEATURES:
 
-📦 AUTOMATIC RESOURCE CREATION:
-✅ Resource Group with specified location
-✅ Storage Account with unique naming
-✅ AI Vision service (Computer Vision)
-✅ Key Vault for secure credential storage
-✅ Blob containers for images and results
+🔐 RBAC PERMISSION HANDLING:
+✅ Automatically gets current user ID
+✅ Assigns Key Vault Administrator role
+✅ Fallback to access policies if RBAC fails
+✅ Retry logic for permission propagation
+✅ Graceful fallback to local credentials
 
-🔐 CREDENTIAL MANAGEMENT:
-✅ Stores secrets in Azure Key Vault
-✅ Creates local creds.txt for development
-✅ Supports both authentication methods
+⏳ TIMING & RELIABILITY:
+✅ Proper wait times for resource propagation
+✅ Retry logic for secret storage
+✅ Batch upload for large image sets
+✅ Error handling with graceful degradation
 
-📤 SAMPLE DATA SETUP:
-✅ Uploads images from local 'images' folder
-✅ Creates proper container structure
-✅ Handles multiple image formats
-
-⚙️ CONFIGURATION:
-✅ Updates config.json with deployment info
-✅ Configurable naming conventions
-✅ Resource name collision avoidance
+📦 COMPREHENSIVE SETUP:
+✅ Creates all Azure resources
+✅ Handles both RBAC and legacy Key Vault permissions
+✅ Uploads sample images in batches
+✅ Creates both Key Vault and local credentials
+✅ Updates configuration with deployment info
 
 🎯 USAGE EXAMPLES:
 
 # Basic deployment
 python deploy_azure_resources.py --resource-group my-ai-analyzer-rg
 
-# Custom location
-python deploy_azure_resources.py -g my-rg -l westus2
+# Custom location and config
+python deploy_azure_resources.py -g my-rg -l westus2 -c custom_config.json
 
-# Custom config file
-python deploy_azure_resources.py -g my-rg -c custom_config.json
-
-# Complete example
-python deploy_azure_resources.py \
-  --resource-group ai-image-analyzer-prod \
-  --location eastus \
-  --config production_config.json
+# The script will:
+# 1. Create all Azure resources
+# 2. Set up proper permissions automatically
+# 3. Store secrets in Key Vault (with fallback)
+# 4. Upload all sample images
+# 5. Create local creds.txt for development
+# 6. Provide ready-to-use commands
 """

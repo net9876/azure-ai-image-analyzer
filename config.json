@@ -1,22 +1,16 @@
 {
   "analysis_settings": {
     "target_keywords": [
-      "person",
-      "car", 
-      "animal",
-      "building",
-      "dog",
       "cat",
-      "vehicle",
-      "tree",
-      "outdoor",
-      "indoor"
+      "dog",
+      "animal",
+      "pet"
     ],
     "confidence_threshold": 0.5,
     "max_tags": 10,
     "features": [
       "caption",
-      "tags", 
+      "tags",
       "objects"
     ]
   },
@@ -26,13 +20,18 @@
   },
   "naming_convention": {
     "storage_prefix": "aianalyzer",
-    "vision_prefix": "ai-vision", 
+    "vision_prefix": "ai-vision",
     "keyvault_prefix": "ai-kv"
   },
-  "deployment_settings": {
-    "default_location": "eastus",
-    "storage_sku": "Standard_LRS",
-    "vision_sku": "S1",
-    "auto_upload_samples": true
+  "deployment_info": {
+    "resource_group": "my-ai-analyzer-rg",
+    "location": "eastus",
+    "key_vault_url": "https://ai-kv-aoknyd.vault.azure.net/",
+    "resource_names": {
+      "storage_account": "aianalyzeraoknyd",
+      "ai_vision": "ai-vision-aoknyd",
+      "key_vault": "ai-kv-aoknyd"
+    },
+    "deployment_date": "2025-07-04T15:36:45"
   }
 }

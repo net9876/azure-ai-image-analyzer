@@ -151,11 +151,6 @@ Thumbs.db
 # Project specific
 dog_analysis_results_*.json
 dog_analysis_latest.json
-*.jpg
-*.jpeg
-*.png
-*.bmp
-*.gif
 
 # Secrets and credentials
 secrets.json
@@ -182,3 +177,7 @@ logs/
 # Backup files
 *.bak
 *.backup
+
+# Deployment backups and results
+deploy_azure_resources_backup.py
+image_analysis_results_*.json
