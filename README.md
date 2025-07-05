@@ -117,15 +117,7 @@ python azure_ai_image_analyzer.py
 
 ## 🔧 Configuration
 
-### Environment Variables
-
-| Variable | Description | Default | Required |
-|----------|-------------|---------|----------|
-| `CREDENTIAL_METHOD` | `keyvault` or `local` | `keyvault` | Yes |
-| `KEY_VAULT_URL` | Azure Key Vault URL | None | If using keyvault |
-| `CONFIG_FILE` | Configuration file path | `config.json` | No |
-
-### Configuration File (config.json)
+The analyzer automatically creates a `config.json` file during deployment. You can customize analysis settings:
 
 ```json
 {
@@ -134,15 +126,6 @@ python azure_ai_image_analyzer.py
     "confidence_threshold": 0.5,
     "max_tags": 10,
     "features": ["caption", "tags", "objects"]
-  },
-  "containers": {
-    "input_container": "input-images",
-    "results_container": "analysis-results"
-  },
-  "naming_convention": {
-    "storage_prefix": "aianalyzer",
-    "vision_prefix": "ai-vision",
-    "keyvault_prefix": "ai-kv"
   }
 }
 ```
@@ -215,49 +198,26 @@ The analyzer generates comprehensive JSON results:
 
 ## 🐳 Docker Deployment
 
-### Build and Run Locally
+The project includes automatic Docker deployment for production environments:
+
 ```bash
-# Build image
-docker build -t azure-ai-image-analyzer .
+# Deploy as scalable Container App with web interface
+python deploy_container_app.py --resource-group my-ai-analyzer-rg
 
-# Run with Key Vault
-docker run \
-  -e CREDENTIAL_METHOD="keyvault" \
-  -e KEY_VAULT_URL="https://your-kv.vault.azure.net/" \
-  azure-ai-image-analyzer
-
-# Run with local credentials
-docker run \
-  -v $(pwd)/creds.txt:/app/creds.txt:ro \
-  -e CREDENTIAL_METHOD="local" \
-  azure-ai-image-analyzer
+# Result: Web-accessible container with monitoring and auto-scaling
 ```
 
-### Azure Container Instances
-```bash
-az container create \
-  --resource-group my-ai-analyzer-rg \
-  --name image-analyzer \
-  --image azure-ai-image-analyzer \
-  --environment-variables \
-    CREDENTIAL_METHOD="keyvault" \
-    KEY_VAULT_URL="https://your-kv.vault.azure.net/" \
-  --assign-identity \
-  --cpu 2 \
-  --memory 4
-```
+### Web Interface Features
+- 🔍 **One-click analysis** of 100 sample images
+- 📊 **Real-time status** monitoring
+- 📋 **Results viewer** with JSON formatting
+- 🔄 **Health checks** and logging
 
-### Azure Container Apps
-```bash
-az containerapp create \
-  --name image-analyzer \
-  --resource-group my-ai-analyzer-rg \
-  --environment my-container-env \
-  --image azure-ai-image-analyzer \
-  --env-vars \
-    CREDENTIAL_METHOD="keyvault" \
-    KEY_VAULT_URL="https://your-kv.vault.azure.net/"
-```
+### Container App Benefits
+- 🚀 **Auto-scaling** (0-3 replicas based on demand)
+- 📊 **Monitoring** with Log Analytics integration
+- 🔒 **Secure** with managed identity
+- 🌍 **Public endpoint** for web access
 
 ## 📁 Project Structure
 
@@ -312,62 +272,9 @@ source venv/bin/activate  # Windows: venv\Scripts\activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Run with local credentials
-export CREDENTIAL_METHOD="local"
-python azure_ai_image_analyzer.py
+# Deploy Azure resources
+./quick_start.sh
 ```
-
-### Adding Custom Analysis Features
-Extend the analyzer by modifying the `process_api_response` method:
-
-```python
-def process_api_response(self, result, blob_name):
-    # Add custom analysis logic here
-    # Example: sentiment analysis, custom object detection, etc.
-    pass
-```
-
-### Cost Management
-- **Free Tier**: Use F0 SKU for AI Vision (limited requests)
-- **Development**: Use local credentials to avoid Key Vault costs
-- **Production**: Monitor usage with Azure Cost Management
-
-## 📋 Troubleshooting
-
-### Common Issues
-
-**Authentication Errors:**
-```bash
-# Ensure Azure CLI login
-az login
-
-# Check current account
-az account show
-```
-
-**Key Vault Access:**
-```bash
-# Verify Key Vault permissions
-az keyvault secret list --vault-name your-kv-name
-```
-
-**Missing Images:**
-```bash
-# Check container contents
-az storage blob list --container-name input-images --connection-string "..."
-```
-
-**Python Dependencies:**
-```bash
-# Reinstall dependencies
-pip install -r requirements.txt --force-reinstall
-```
-
-### Performance Tips
-- Use batch processing for large image sets
-- Monitor API rate limits
-- Optimize image sizes before analysis
-- Use Azure regions close to your location
 
 ## 🧹 Cleanup
 
