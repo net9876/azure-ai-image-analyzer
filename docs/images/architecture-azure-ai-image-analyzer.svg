@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="620" viewBox="0 0 1100 620">
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="black"/></marker></defs>
+<text x="550" y="35" text-anchor="middle" font-family="Arial" font-size="24" font-weight="bold">Azure AI Image Analyzer - Architecture</text>
+<rect x="60" y="110" width="190" height="80" rx="10" fill="white" stroke="black" stroke-width="2"/><text x="155" y="142" text-anchor="middle" font-family="Arial" font-size="14"><tspan x="155">Local Images</tspan><tspan x="155" dy="17">images/ folder</tspan></text>
+<rect x="330" y="110" width="190" height="80" rx="10" fill="white" stroke="black" stroke-width="2"/><text x="425" y="142" text-anchor="middle" font-family="Arial" font-size="14"><tspan x="425">Azure Blob Storage</tspan><tspan x="425" dy="17">Input Container</tspan></text>
+<rect x="600" y="110" width="190" height="80" rx="10" fill="white" stroke="black" stroke-width="2"/><text x="695" y="142" text-anchor="middle" font-family="Arial" font-size="14"><tspan x="695">Python Analyzer</tspan><tspan x="695" dy="17">REST Orchestration</tspan></text>
+<rect x="860" y="110" width="190" height="80" rx="10" fill="white" stroke="black" stroke-width="2"/><text x="955" y="142" text-anchor="middle" font-family="Arial" font-size="14"><tspan x="955">Azure AI Vision</tspan><tspan x="955" dy="17">Image Analysis API</tspan></text>
+<rect x="600" y="320" width="190" height="80" rx="10" fill="white" stroke="black" stroke-width="2"/><text x="695" y="352" text-anchor="middle" font-family="Arial" font-size="14"><tspan x="695">Result Builder</tspan><tspan x="695" dy="17">JSON Output</tspan></text>
+<rect x="330" y="320" width="190" height="80" rx="10" fill="white" stroke="black" stroke-width="2"/><text x="425" y="352" text-anchor="middle" font-family="Arial" font-size="14"><tspan x="425">Azure Blob Storage</tspan><tspan x="425" dy="17">Results Container</tspan></text>
+<rect x="60" y="320" width="190" height="80" rx="10" fill="white" stroke="black" stroke-width="2"/><text x="155" y="352" text-anchor="middle" font-family="Arial" font-size="14"><tspan x="155">Local Backup</tspan><tspan x="155" dy="17">JSON File</tspan></text>
+<rect x="600" y="470" width="190" height="80" rx="10" fill="white" stroke="black" stroke-width="2"/><text x="695" y="502" text-anchor="middle" font-family="Arial" font-size="14"><tspan x="695">Key Vault or</tspan><tspan x="695" dy="17">Local creds.txt</tspan></text>
+<line x1="250" y1="150" x2="330" y2="150" stroke="black" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="520" y1="150" x2="600" y2="150" stroke="black" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="790" y1="150" x2="860" y2="150" stroke="black" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="955" y1="190" x2="720" y2="320" stroke="black" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="600" y1="360" x2="520" y2="360" stroke="black" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="330" y1="360" x2="250" y2="360" stroke="black" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="695" y1="470" x2="695" y2="400" stroke="black" stroke-width="2" marker-end="url(#arrow)"/>
+</svg>

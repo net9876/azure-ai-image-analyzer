@@ -1,0 +1,61 @@
+{
+  "analysis_metadata": {
+    "total_images": 3,
+    "images_with_targets": 2,
+    "analysis_date": "2026-05-31T12:00:00",
+    "target_keywords": [
+      "cat",
+      "dog",
+      "animal",
+      "pet"
+    ],
+    "confidence_threshold": 0.5,
+    "input_container": "input-images",
+    "results_container": "analysis-results",
+    "credential_method": "local",
+    "analyzer_version": "3.0.0"
+  },
+  "summary_statistics": {
+    "detection_rate": 66.67,
+    "avg_confidence": 0.82,
+    "total_objects_found": 2,
+    "avg_tags_per_image": 6.3
+  },
+  "detailed_results": [
+    {
+      "filename": "sample-cat.jpg",
+      "analyzed_at": "2026-05-31T12:00:00",
+      "caption": "a cat sitting on a sofa",
+      "confidence": 0.89,
+      "tags": [
+        {
+          "name": "cat",
+          "confidence": 0.95
+        },
+        {
+          "name": "pet",
+          "confidence": 0.88
+        },
+        {
+          "name": "indoor",
+          "confidence": 0.82
+        }
+      ],
+      "objects": [
+        {
+          "object": "cat",
+          "confidence": 0.91,
+          "bounding_box": {
+            "x": 120,
+            "y": 90,
+            "w": 250,
+            "h": 300
+          }
+        }
+      ],
+      "target_objects_detected": [
+        "cat"
+      ]
+    }
+  ]
+}

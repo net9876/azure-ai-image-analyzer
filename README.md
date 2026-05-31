@@ -1,123 +1,198 @@
-# 🔍 Azure AI Image Analyzer
+# Azure AI Image Analyzer
 
-A flexible Azure AI-powered application that analyzes images using Azure Computer Vision API. The application processes images from Azure Blob Storage, analyzes them using Azure AI Vision services, and stores comprehensive results back to Azure Blob Storage with automatic deployment and credential management.
+![Azure AI Vision](https://img.shields.io/badge/Azure-AI%20Vision-blue)
+![Python](https://img.shields.io/badge/Python-3.12%2B-blue)
+![Blob Storage](https://img.shields.io/badge/Azure-Blob%20Storage-blue)
+![Key Vault](https://img.shields.io/badge/Azure-Key%20Vault-purple)
+![Status](https://img.shields.io/badge/status-lab%2FMVP-yellow)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-![Python](https://img.shields.io/badge/python-v3.12+-blue.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
-![Azure](https://img.shields.io/badge/azure-AI%20Vision-blue.svg)
-![Status](https://img.shields.io/badge/status-active-success.svg)
+Azure AI Image Analyzer is a Python-based Azure AI Vision lab that analyzes images stored in Azure Blob Storage and writes structured JSON results back to Blob Storage.
 
-## ✨ Features
+The project demonstrates:
 
-- **🔍 Smart Image Analysis**: Comprehensive image analysis with captions, tags, and object detection
-- **🏷️ Flexible Detection**: Configurable keyword detection for any object types or categories
-- **📝 Rich Metadata**: Generates detailed captions and extracts objects with confidence scores
-- **☁️ Azure Integration**: Seamless integration with Azure Blob Storage and Key Vault
-- **📊 Comprehensive Results**: Stores detailed analysis results with metadata and statistics
-- **🔒 Secure Credentials**: Supports both Azure Key Vault and local credential files
-- **🚀 Auto-Deployment**: Fully automated Azure resource creation and configuration
-- **📦 Sample Dataset**: Includes 100 high-quality sample images for immediate testing
-- **🐳 Containerized**: Docker support for easy deployment
-- **⚙️ Configurable**: Easy configuration through environment variables and config files
-- **🖥️ Cross-Platform**: Works on Windows, macOS, and Linux
+- Azure AI Vision image analysis through REST API
+- Azure Blob Storage input and output containers
+- optional Azure Key Vault credential retrieval
+- local development credentials through `creds.txt`
+- configurable target keyword detection
+- JSON result generation with captions, tags, objects, confidence scores, and summary statistics
 
-## 🏗️ Architecture
+> This is a lab / proof-of-concept project. It is intended for learning, testing, demos, and portfolio use. It is not a production-ready image processing platform.
 
+---
+
+## Why This Project Exists
+
+Many cloud and AI demos stop at a single API call. This project shows a more practical pattern:
+
+1. Store images in Blob Storage.
+2. Analyze each image through Azure AI Vision.
+3. Extract captions, tags, detected objects, and confidence scores.
+4. Match results against configurable target keywords.
+5. Save full analysis output to Blob Storage.
+6. Keep credentials outside the source code.
+
+This makes the project useful as a hands-on Azure AI lab and as a base for larger use cases such as image cataloging, content tagging, asset classification, or AI-assisted metadata extraction.
+
+---
+
+## Architecture
+
+![Architecture](docs/images/architecture-azure-ai-image-analyzer.svg)
+
+Main components:
+
+- Python analyzer
+- Azure Blob Storage input container
+- Azure AI Vision / Computer Vision endpoint
+- Azure Blob Storage results container
+- optional Azure Key Vault for secrets
+- local `creds.txt` for development only
+
+---
+
+## Processing Flow
+
+![Processing Flow](docs/images/processing-flow.svg)
+
+The analyzer performs this flow:
+
+1. Load configuration from `config.json`, or create a default configuration.
+2. Load credentials from Key Vault or local `creds.txt`.
+3. Ensure input and result containers exist.
+4. Upload local images from the `images/` folder if present.
+5. List images from the input container.
+6. Analyze each image using Azure AI Vision REST API.
+7. Extract captions, tags, objects, and target keyword matches.
+8. Save timestamped result JSON and `image_analysis_latest.json` to Blob Storage.
+9. Save a local backup JSON file.
+
+---
+
+## Current Status
+
+| Area | Status |
+|---|---|
+| Azure Blob Storage integration | Implemented |
+| Azure AI Vision REST API call | Implemented |
+| Key Vault credential loading | Implemented |
+| Local credential file loading | Implemented |
+| Configurable target keywords | Implemented |
+| Result JSON generation | Implemented |
+| Local image upload to Blob Storage | Implemented |
+| Automated Azure resource deployment helper | Implemented |
+| Docker/container production deployment | Not included in current polished scope |
+| Web interface | Not included |
+| Production monitoring and scaling | Not included |
+
+---
+
+## Repository Structure
+
+```text
+azure-ai-image-analyzer/
+  README.md
+  LICENSE
+  requirements.txt
+  .gitignore
+
+  azure_ai_image_analyzer.py
+  deploy_azure_resources.py
+  quick_start.ps1
+  quick_start.sh
+
+  docs/
+    images/
+      architecture-azure-ai-image-analyzer.svg
+      processing-flow.svg
+    sample-output/
+      image_analysis_latest.json
+
+  images/
+    optional local sample images, not required
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   Azure Blob    │    │   Azure AI       │    │   Azure Key     │
-│   Storage       │◄──►│   Vision API     │    │   Vault         │
-│                 │    │                  │    │                 │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-         ▲                       ▲                       ▲
-         │                       │                       │
-         └───────────────────────┼───────────────────────┘
-                                 │
-                    ┌─────────────────┐
-                    │ Azure AI Image  │
-                    │ Analyzer        │
-                    │ Application     │
-                    └─────────────────┘
-```
 
-## 🚀 One-Command Quick Start
+---
 
-### Prerequisites
-- **Azure CLI** installed and logged in (`az login`)
-- **Python 3.12+** installed
-- **Active Azure subscription**
+## Prerequisites
 
-### Linux/macOS
-```bash
-git clone https://github.com/net9876/azure-ai-image-analyzer.git
-cd azure-ai-image-analyzer
-chmod +x quick_start.sh
-./quick_start.sh
-```
+- Azure subscription
+- Azure CLI installed and authenticated
+- Python 3.12+
+- Azure AI Vision / Computer Vision access in your selected region
+- Permissions to create or use:
+  - Resource Group
+  - Storage Account
+  - Blob containers
+  - Azure AI Vision resource
+  - Key Vault, if using Key Vault mode
 
-### Windows (PowerShell)
-```powershell
-git clone https://github.com/net9876/azure-ai-image-analyzer.git
-cd azure-ai-image-analyzer
-.\quick_start.ps1
-```
+Install Python dependencies:
 
-**That's it!** ⚡ The script automatically:
-- ✅ Deploys all Azure resources
-- ✅ Uploads 100 sample images  
-- ✅ Configures authentication
-- ✅ Runs the analysis
-- ✅ Shows comprehensive results
-
-## 📸 Sample Dataset
-
-The repository includes **100 high-quality sample images** featuring:
-- **Cat Breeds**: Abyssinian, Bengal, Birman, Bombay, British Shorthair, Egyptian Mau, Maine Coon, Persian, Ragdoll, Russian Blue, Siamese, Sphynx
-- **Dog Breeds**: American Bulldogs, American Pit Bull Terriers, Basset Hounds, Beagles, Boxers, English Cocker Spaniels, English Setters, German Shorthaired Pointers, Great Pyrenees, Havanese, Japanese Chin, Keeshonds, Leonbergers, Miniature Pinschers, Newfoundlands, Pomeranians, Pugs, Saint Bernards, Samoyeds, Scottish Terriers, Shiba Inus, Staffordshire Bull Terriers, Wheaten Terriers, Yorkshire Terriers
-
-Perfect for testing AI analysis capabilities and demonstrating breed identification!
-
-## ⚙️ Manual Setup (Advanced Users)
-
-### 1. Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Deploy Azure Resources
-```bash
-# Automated deployment
-python deploy_azure_resources.py --resource-group my-ai-analyzer-rg --location eastus
-```
+---
 
-### 3. Choose Authentication Method
+## Authentication Options
 
-#### Option A: Azure Key Vault (Production)
-```bash
-export CREDENTIAL_METHOD="keyvault"
-export KEY_VAULT_URL="https://your-keyvault.vault.azure.net/"
-```
+### Option 1: Local credentials for development
 
-#### Option B: Local Credentials (Development)
-Create `creds.txt`:
-```
+Create `creds.txt` in the repository root:
+
+```text
 storage_connection_string=DefaultEndpointsProtocol=https;AccountName=...
 vision_endpoint=https://your-vision-service.cognitiveservices.azure.com/
 vision_key=your_vision_api_key
 ```
 
+Set:
+
+```powershell
+$env:CREDENTIAL_METHOD = "local"
+```
+
+or in Bash:
+
 ```bash
 export CREDENTIAL_METHOD="local"
 ```
 
-### 4. Run Analysis
-```bash
-python azure_ai_image_analyzer.py
+`creds.txt` must not be committed.
+
+### Option 2: Azure Key Vault
+
+Store these secrets in Key Vault:
+
+```text
+storage-connection-string
+vision-endpoint
+vision-key
 ```
 
-## 🔧 Configuration
+Set:
 
-The analyzer automatically creates a `config.json` file during deployment. You can customize analysis settings:
+```powershell
+$env:CREDENTIAL_METHOD = "keyvault"
+$env:KEY_VAULT_URL = "https://your-keyvault.vault.azure.net/"
+```
+
+or in Bash:
+
+```bash
+export CREDENTIAL_METHOD="keyvault"
+export KEY_VAULT_URL="https://your-keyvault.vault.azure.net/"
+```
+
+---
+
+## Configuration
+
+The analyzer uses `config.json`. If the file does not exist, the application creates a default configuration.
+
+Example:
 
 ```json
 {
@@ -126,201 +201,155 @@ The analyzer automatically creates a `config.json` file during deployment. You c
     "confidence_threshold": 0.5,
     "max_tags": 10,
     "features": ["caption", "tags", "objects"]
-  }
-}
-```
-
-### Customization Examples
-
-#### Analyze Vehicles
-```json
-{
-  "analysis_settings": {
-    "target_keywords": ["car", "truck", "motorcycle", "bus", "vehicle"],
-    "confidence_threshold": 0.6
-  }
-}
-```
-
-#### Analyze Architecture
-```json
-{
-  "analysis_settings": {
-    "target_keywords": ["building", "house", "architecture", "structure"],
-    "confidence_threshold": 0.7
-  }
-}
-```
-
-## 📊 Output Format
-
-The analyzer generates comprehensive JSON results:
-
-```json
-{
-  "analysis_metadata": {
-    "total_images": 100,
-    "images_with_targets": 98,
-    "analysis_date": "2025-07-04T13:29:23",
-    "target_keywords": ["cat", "dog", "animal", "pet"],
-    "confidence_threshold": 0.5,
-    "analyzer_version": "3.0.0"
   },
-  "summary_statistics": {
-    "detection_rate": 98.0,
-    "avg_confidence": 0.82,
-    "total_objects_found": 245,
-    "avg_tags_per_image": 7.3
+  "containers": {
+    "input_container": "input-images",
+    "results_container": "analysis-results"
   },
-  "detailed_results": [
-    {
-      "filename": "Maine_Coon_37.jpg",
-      "analyzed_at": "2025-07-04T13:29:23",
-      "caption": "a large cat sitting on a wooden surface",
-      "confidence": 0.89,
-      "tags": [
-        {"name": "cat", "confidence": 0.95},
-        {"name": "maine coon", "confidence": 0.87},
-        {"name": "indoor", "confidence": 0.82}
-      ],
-      "objects": [
-        {
-          "object": "cat",
-          "confidence": 0.91,
-          "bounding_box": {"x": 150, "y": 200, "w": 300, "h": 400}
-        }
-      ],
-      "target_objects_detected": ["cat", "maine coon"]
-    }
-  ]
+  "naming_convention": {
+    "storage_prefix": "aianalyzer",
+    "vision_prefix": "ai-vision",
+    "keyvault_prefix": "ai-kv"
+  }
 }
 ```
-
-## 🐳 Docker Deployment
-
-The project includes automatic Docker deployment for production environments:
-
-```bash
-# Deploy as scalable Container App with web interface
-python deploy_container_app.py --resource-group my-ai-analyzer-rg
-
-# Result: Web-accessible container with monitoring and auto-scaling
-```
-
-### Web Interface Features
-- 🔍 **One-click analysis** of 100 sample images
-- 📊 **Real-time status** monitoring
-- 📋 **Results viewer** with JSON formatting
-- 🔄 **Health checks** and logging
-
-### Container App Benefits
-- 🚀 **Auto-scaling** (0-3 replicas based on demand)
-- 📊 **Monitoring** with Log Analytics integration
-- 🔒 **Secure** with managed identity
-- 🌍 **Public endpoint** for web access
-
-## 📁 Project Structure
-
-```
-azure-ai-image-analyzer/
-├── README.md                          # This file
-├── requirements.txt                   # Python dependencies
-├── Dockerfile                         # Container deployment
-├── azure_ai_image_analyzer.py         # Main application
-├── deploy_azure_resources.py          # Automated deployment
-├── quick_start.sh                     # Linux/macOS quick start
-├── quick_start.ps1                    # Windows PowerShell quick start
-├── config.json                        # Configuration (auto-generated)
-├── .gitignore                         # Git ignore rules
-├── LICENSE                            # MIT license
-└── images/                            # Sample dataset (100 images)
-    ├── Abyssinian_77.jpg
-    ├── american_bulldog_48.jpg
-    ├── Maine_Coon_37.jpg
-    └── ... (97 more images)
-```
-
-## 🔍 Supported Image Formats
-
-- JPEG (.jpg, .jpeg)
-- PNG (.png)
-- BMP (.bmp)
-- TIFF (.tiff)
-- GIF (.gif)
-
-## 🎯 Use Cases
-
-- **Pet Photography**: Analyze and categorize pet photos by breed
-- **Content Moderation**: Automated animal detection in user content
-- **Research & Education**: Academic research with comprehensive datasets
-- **Inventory Management**: Catalog and analyze product images
-- **Quality Control**: Automated image content verification
-- **Asset Management**: Digital asset organization and tagging
-
-## 🛠️ Development
-
-### Local Development Setup
-```bash
-# Clone and setup
-git clone https://github.com/net9876/azure-ai-image-analyzer.git
-cd azure-ai-image-analyzer
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Deploy Azure resources
-./quick_start.sh
-```
-
-## 🧹 Cleanup
-
-To remove all Azure resources:
-```bash
-# Delete entire resource group (WARNING: This deletes everything!)
-az group delete --name my-ai-analyzer-rg --yes --no-wait
-```
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🤝 Contributing
-
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📞 Support
-
-- **Issues**: [GitHub Issues](https://github.com/net9876/azure-ai-image-analyzer/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/net9876/azure-ai-image-analyzer/discussions)
-- **Azure Documentation**: [Azure Computer Vision](https://docs.microsoft.com/azure/cognitive-services/computer-vision/)
-
-## 🏆 Acknowledgments
-
-- Built with [Azure Computer Vision](https://azure.microsoft.com/services/cognitive-services/computer-vision/)
-- Sample dataset curated for comprehensive AI testing
-- Designed for educational, research, and production use
-- Community-driven development and enhancement
 
 ---
 
-**⭐ If this project helped you, please consider giving it a star!**
+## Deploy Azure Resources
 
-## 🚀 What's Next?
+The helper deployment script uses Azure CLI to create the basic Azure resources.
 
-- 🔄 **Batch Processing**: Handle thousands of images efficiently
-- 🌐 **Web Interface**: Browser-based image upload and analysis
-- 📱 **Mobile App**: iOS/Android companion app
-- 🤖 **Custom Models**: Train specialized detection models
-- 🔔 **Real-time Processing**: Live image analysis capabilities
-- 🌍 **Multi-language**: Support for multiple languages
-- 📈 **Analytics Dashboard**: Advanced reporting and insights
+```bash
+python deploy_azure_resources.py --resource-group my-ai-analyzer-rg --location eastus
+```
+
+The script can create:
+
+- Resource Group
+- Storage Account
+- Blob containers
+- Azure AI Vision resource
+- Key Vault
+- local `creds.txt` for development
+
+Review the generated resources and permissions before using this outside a lab.
+
+---
+
+## Run the Analyzer
+
+### PowerShell
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+
+$env:CREDENTIAL_METHOD = "local"
+python .\azure_ai_image_analyzer.py
+```
+
+### Bash
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+export CREDENTIAL_METHOD="local"
+python ./azure_ai_image_analyzer.py
+```
+
+The analyzer will upload local images from `images/` if that folder exists. If no local images exist, add images directly to the configured Blob Storage input container.
+
+---
+
+## Output Format
+
+The analyzer writes result JSON to the configured results container.
+
+Files:
+
+```text
+image_analysis_YYYYMMDD_HHMMSS.json
+image_analysis_latest.json
+```
+
+Sample output:
+
+```text
+docs/sample-output/image_analysis_latest.json
+```
+
+---
+
+## Cost Notes
+
+This lab may create billable Azure resources:
+
+- Azure AI Vision / Computer Vision calls
+- Storage Account capacity and transactions
+- Key Vault operations, if Key Vault mode is used
+
+Delete lab resources after testing.
+
+---
+
+## Security Notes
+
+- Do not commit `creds.txt`, `.env`, generated `config.json`, or result files.
+- Prefer Key Vault for shared environments.
+- Rotate AI Vision keys if they are accidentally exposed.
+- Review Key Vault access permissions.
+- Do not upload sensitive, private, regulated, or customer images into a public demo environment.
+- Review generated JSON before sharing it publicly, because captions/tags may reveal image content.
+
+---
+
+## Cleanup
+
+Delete the lab resource group:
+
+```bash
+az group delete --name my-ai-analyzer-rg --yes --no-wait
+```
+
+Before cleanup, confirm the resource group contains only lab resources.
+
+---
+
+## Limitations
+
+This project intentionally does not include:
+
+- web UI
+- production container deployment
+- queue-based batch processing
+- event-driven processing from Blob upload
+- private endpoint/network isolation
+- human review workflow
+- image moderation policy engine
+- guaranteed object or breed identification accuracy
+
+---
+
+## Suggested GitHub Repository Metadata
+
+Description:
+
+```text
+Azure AI Vision lab for analyzing images from Blob Storage and saving structured JSON results with captions, tags, objects, and confidence scores.
+```
+
+Topics:
+
+```text
+azure ai-vision computer-vision blob-storage key-vault python image-analysis azure-ai artificial-intelligence cloud-lab
+```
+
+---
+
+## License
+
+MIT License. See [LICENSE](LICENSE) for details.
